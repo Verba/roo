@@ -27,7 +27,7 @@ class Roo::CSV < Roo::Base
   def cell(row, col, sheet=nil)
     sheet ||= @default_sheet
     read_cells(sheet)
-    @cell[normalize(row,col)]
+    @cell[sheet][normalize(row,col)]
   end
 
   def celltype(row, col, sheet=nil)
@@ -75,11 +75,12 @@ class Roo::CSV < Roo::Base
     @last_row[sheet] = 0
     @first_column[sheet] = 1
     @last_column[sheet] = 1
+    @cell[sheet] ||= {}
     rownum = 1
     each_row csv_options do |row|
       row.each_with_index do |elem,i|
-        @cell[[rownum,i+1]] = cell_postprocessing rownum,i+1, elem
-        @cell_type[[rownum,i+1]] = celltype_class @cell[[rownum,i+1]]
+        @cell[sheet][[rownum,i+1]] = cell_postprocessing rownum,i+1, elem
+        @cell_type[[rownum,i+1]] = celltype_class @cell[sheet][[rownum,i+1]]
         if i+1 > @last_column[sheet]
           @last_column[sheet] += 1
         end
