@@ -465,18 +465,18 @@ class Roo::Base
     ary
   end
 
-  def row_with(query,return_headers=false)
-    query.map! {|x| Array(x.split('*'))}
+  def row_with(query, return_headers=false)
+    split_query = query.map{|x| Array(x.split('*'))}
     line_no = 0
     each do |row|
       line_no += 1
       # makes sure headers is the first part of wildcard search for priority
       # ex. if UPC and SKU exist for UPC*SKU search, UPC takes the cake
-      headers = query.map do |q|
+      headers = split_query.map do |q|
         q.map {|i| row.grep(/#{i}/i)[0]}.compact[0]
       end.compact
 
-      if headers.length == query.length
+      if headers.length == split_query.length
         @header_line = line_no
         return return_headers ? headers : line_no
       elsif line_no > 100
