@@ -3,13 +3,22 @@ require 'spreadsheet'
 # Class for handling Excel-Spreadsheets
 class Roo::Excel < Roo::Base
   FORMULAS_MESSAGE = 'the spreadsheet gem does not support forumulas, so roo can not.'
-  CHARGUESS =
-    begin
-      require 'charguess'
-      true
-    rescue LoadError
-      false
+  # CHARGUESS =
+  #   begin
+  #     require 'charguess'
+  #     true
+  #   rescue LoadError
+  #     false
+  #   end
+  PLATFORM_ENCODING = case RUBY_PLATFORM.downcase
+    when /darwin|solaris/
+      Encoding::UTF_8
+    when /mswin32/
+      Encoding::ISO_8859_1
+    else
+      nil
     end
+
 
   attr_reader :workbook
 
@@ -50,7 +59,7 @@ class Roo::Excel < Roo::Base
 
   # returns an array of sheet names in the spreadsheet
   def sheets
-    @workbook.worksheets.collect {|worksheet| normalize_string(worksheet.name)}
+    @workbook.worksheets.collect {|worksheet| normalized_worksheet_name(worksheet.name)}
   end
 
   # this method lets you find the worksheet with the most data
@@ -141,56 +150,24 @@ class Roo::Excel < Roo::Base
     return name-1 if name.kind_of?(Fixnum)
     i = 0
     @workbook.worksheets.each do |worksheet|
-      return i if name == normalize_string(worksheet.name)
+      return i if name == normalized_worksheet_name(worksheet.name)
       i += 1
     end
     raise StandardError, "sheet '#{name}' not found"
   end
 
+  def normalized_worksheet_name(name)
+    @normalized_worksheet_name ||= {}
+    @normalized_worksheet_name[name] ||= normalize_string(name)
+  end
+
   def normalize_string(value)
-    value = every_second_null?(value) ? remove_every_second_null(value) : value
-    if CHARGUESS && encoding = CharGuess::guess(value)
-      encoding.encode Encoding::UTF_8
-    else
-      platform_specific_encoding(value)
-    end
+    platform_specific_encoding(value.gsub(/\000/,''))
   end
 
+  # TODO: Implement charguess
   def platform_specific_encoding(value)
-    result =
-      case RUBY_PLATFORM.downcase
-      when /darwin|solaris/
-        value.encode Encoding::UTF_8
-      when /mswin32/
-        value.encode Encoding::ISO_8859_1
-      else
-        value
-      end
-    if every_second_null?(result)
-      result = remove_every_second_null(result)
-    end
-    result
-  end
-
-  def every_second_null?(str)
-    result = true
-    return false if str.length < 2
-    0.upto(str.length/2-1) do |i|
-      if str[i*2+1,1] != "\000"
-        result = false
-        break
-      end
-    end
-    result
-  end
-
-  def remove_every_second_null(str)
-    result = ''
-    0.upto(str.length/2-1) do |i|
-      c = str[i*2,1]
-      result += c
-    end
-    result
+    PLATFORM_ENCODING ? value.encode(PLATFORM_ENCODING) : value
   end
 
   # helper function to set the internal representation of cells
